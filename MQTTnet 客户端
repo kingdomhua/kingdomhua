@@ -1,0 +1,60 @@
+using System;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+using MQTTnet;
+using MQTTnet.Client;
+using MQTTnet.Client.Options;
+
+class Program
+{
+    static async Task Main(string[] args)
+    {
+        // 创建客户端配置
+        var options = new MqttClientOptionsBuilder()
+            .WithTcpServer("36.41.64.156", 1883)
+            .WithClientId("Client1") // 客户端ID
+            .WithCredentials("mqtt1","123456")
+            .Build();
+
+        // 创建MQTT客户端实例
+        var mqttClient = new MqttFactory().CreateMqttClient();
+
+        // 处理连接成功事件
+        mqttClient.UseConnectedHandler(e =>
+        {
+            Console.WriteLine("Connected to MQTT Broker");
+        });
+
+        // 处理连接断开事件
+        mqttClient.UseDisconnectedHandler(e =>
+        {
+            Console.WriteLine("Disconnected from MQTT Broker");
+        });
+
+        // 处理接收到消息事件
+        mqttClient.UseApplicationMessageReceivedHandler(e =>
+        {
+            Console.WriteLine($"Received message: {e.ApplicationMessage.Payload}");
+        });
+
+        // 连接到MQTT服务器
+        await mqttClient.ConnectAsync(options, CancellationToken.None);
+
+        // 发布消息
+        var message = new MqttApplicationMessageBuilder()
+            .WithTopic("topic/test")
+            .WithPayload("Hello, MQTT!")
+            .WithExactlyOnceQoS()
+            .WithRetainFlag()
+            .Build();
+
+        await mqttClient.PublishAsync(message, CancellationToken.None);
+
+        Console.WriteLine("Message published. Press any key to exit.");
+        Console.ReadLine();
+
+        // 断开与MQTT服务器的连接
+        await mqttClient.DisconnectAsync();
+    }
+}
